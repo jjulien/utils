@@ -1,0 +1,94 @@
+#!/usr/bin/perl
+
+use File::Basename;
+use File::Copy;
+
+my $DIRECTORY=$ARGV[0];
+our $FIND=$ARGV[1];
+our $REPLACE=$ARGV[2];
+our $GDH=1;
+
+($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
+
+$year += 1900;
+$mon +=1;
+my $STAMP = sprintf("%04d%02d%02d_%02d%02d%02d", $year, $mon, $mday, $hour, $min, $sec);
+my $SCRIPTNAME = basename($0);
+
+my $BASEDIR = basename($DIRECTORY);
+
+my $BACKUPDIR="/findAndReplace/backup/";
+my $BACKUPFILE="$BACKUPDIR/${SCRIPTNAME}_${BASEDIR}_${STAMP}.tar";
+
+if ( ! -d "$BACKUPDIR" ) {
+  make_path($BACKUPDIR); 
+}
+
+print "\nAre you sure you want to recusivly scan $DIRECTORY with the following changes:\n";
+print "   Find: \"$FIND\"\n";
+print "Replace: \"$REPLACE\"\n";
+print "Type Yes or No: ";
+
+chomp (my $response = <STDIN>);
+
+if ( lc $response ne "yes" )  { print "\nBe more careful next time.\n\n"; exit 12; }
+
+my $TARCOMMAND  = "tar -cf $BACKUPFILE $DIRECTORY >/dev/null 2>&1";
+
+print "\nBacking up files just in case\n";
+system("$TARCOMMAND");
+print "Backup saved to $BACKUPFILE\n";
+
+sub doreplace
+{
+   my $searchFile = $_[0];
+   my $tempFile = "/tmp/mytmpfile.$$";
+   #print "Checking $searchFile\n";
+   open(FH, $searchFile) or die "Could not open file $searchFile for input\n";
+   open(OH, "> $tempFile") or die "Could not open output file $tmpFile\n";
+   while ( <FH> )
+   {
+          if ( $_ =~ /$FIND/ )
+      {
+         $_ =~ s/$FIND/$REPLACE/g;
+         print "Changes made in: $searchFile\n";
+
+      }
+      print OH $_;
+   }
+   close(FH);
+   close(OH);
+   move($tempFile, $searchFile);
+
+
+}
+sub traverse
+{
+
+    my $thisDIR = $_[0];
+    #print "Opening directory $thisDIR\n";
+    my $DH = "DH$GDH";
+        opendir ($DH, $thisDIR) or die "Could not open directory $thisDIR\n";
+    $GDH++;
+    while ( my $thisFile = readdir($DH)  )
+    {
+        next if $thisFile  =~ /^\./;
+        next if $thisFile  =~ /^\.\./;
+        next if $thisFile =~ /^\.svn$/;
+        #print "Checking $thisDIR/$thisFile\n";
+        if ( -d "$thisDIR/$thisFile" ) { traverse("$thisDIR/$thisFile"); }
+        if ( -f "$thisDIR/$thisFile" ) { doreplace("$thisDIR/$thisFile"); }
+    }
+
+    #print "Closing directory $thisDIR\n";
+    closedir($DH);
+
+
+}
+
+traverse($DIRECTORY);
+
+print "\nIf you find you did something wrong a complete backup of your files was taken\n";
+print "Backup File: $BACKUPFILE\n";
+
+
