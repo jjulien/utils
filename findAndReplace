@@ -1,7 +1,14 @@
 #!/usr/bin/perl
+#
+# This script does a recursive find and replace on text found in a directory of files
+#
+# It was originally created as a way to aid in moving Word Press sites from one domain to another
+#
+#
 
 use File::Basename;
 use File::Copy;
+use File::Path qw(make_path);
 
 my $DIRECTORY=$ARGV[0];
 our $FIND=$ARGV[1];
